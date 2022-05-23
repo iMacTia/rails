@@ -474,6 +474,10 @@ module ActiveRecord
         false
       end
 
+      def supports_insert_on_duplicate_where?
+        false
+      end
+
       def supports_insert_conflict_target?
         false
       end

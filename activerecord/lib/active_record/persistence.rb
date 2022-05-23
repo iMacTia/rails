@@ -250,6 +250,30 @@ module ActiveRecord
       #   You can also pass an SQL string if you need more control on the return values
       #   (for example, <tt>returning: "id, name as new_name"</tt>).
       #
+      # [:where]
+      #   (PostgreSQL only) Configure the SQL WHERE clause that will be used
+      #   in case of conflict on the conflict_action (UPDATE SET), if this is not "DO NOTHING".
+      #
+      #   Example:
+      #     In this example, the last upserted reading conflicts with a value we already have,
+      #     but the taken_at timestamp is older.
+      #     With the correct where clause, we can skip the update and keep the most up-to-date value.
+      #     The first value in the `upsert_all` will instead be inserted correctly.
+      #
+      #     In the `readings` DB table:
+      #     [
+      #       { device_id: 'ext-temp-1', value: 24.5, taken_at: 1652982016 }
+      #     ]
+      #
+      #     Reading.upsert_all(
+      #       [
+      #         { device_id: 'ext-temp-2', value: 24.5, taken_at: 1652982018 },
+      #         { device_id: 'ext-temp-1', value: 24.4, taken_at: 1652982014 }
+      #       ],
+      #       unique_by: :device_id,
+      #       where: Arel.sql("readings.taken_at > EXCLUDED.taken_at)")
+      #     )
+      #
       # [:unique_by]
       #   (PostgreSQL and SQLite only) By default rows are considered to be unique
       #   by every unique index on the table. Any duplicate rows are skipped.
@@ -329,8 +353,8 @@ module ActiveRecord
       #   ], unique_by: :isbn)
       #
       #   Book.find_by(isbn: "1").title # => "Eloquent Ruby"
-      def upsert_all(attributes, on_duplicate: :update, update_only: nil, returning: nil, unique_by: nil, record_timestamps: nil)
-        InsertAll.new(self, attributes, on_duplicate: on_duplicate, update_only: update_only, returning: returning, unique_by: unique_by, record_timestamps: record_timestamps).execute
+      def upsert_all(attributes, on_duplicate: :update, update_only: nil, returning: nil, unique_by: nil, record_timestamps: nil, where: nil)
+        InsertAll.new(self, attributes, on_duplicate: on_duplicate, update_only: update_only, returning: returning, unique_by: unique_by, record_timestamps: record_timestamps, where: where).execute
       end
 
       # Given an attributes hash, +instantiate+ returns a new instance of

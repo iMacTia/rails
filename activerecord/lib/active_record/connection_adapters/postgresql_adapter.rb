@@ -247,6 +247,7 @@ module ActiveRecord
       end
       alias supports_insert_on_duplicate_skip? supports_insert_on_conflict?
       alias supports_insert_on_duplicate_update? supports_insert_on_conflict?
+      alias supports_insert_on_duplicate_where? supports_insert_on_conflict?
       alias supports_insert_conflict_target? supports_insert_on_conflict?
 
       def supports_virtual_columns?
@@ -526,6 +527,7 @@ module ActiveRecord
           else
             sql << insert.touch_model_timestamps_unless { |column| "#{insert.model.quoted_table_name}.#{column} IS NOT DISTINCT FROM excluded.#{column}" }
             sql << insert.updatable_columns.map { |column| "#{column}=excluded.#{column}" }.join(",")
+            sql << " WHERE #{insert.where}"
           end
         end
 

@@ -5,17 +5,18 @@ require "active_support/core_ext/enumerable"
 module ActiveRecord
   class InsertAll # :nodoc:
     attr_reader :model, :connection, :inserts, :keys
-    attr_reader :on_duplicate, :update_only, :returning, :unique_by, :update_sql
+    attr_reader :on_duplicate, :update_only, :returning, :unique_by, :update_sql, :where
 
-    def initialize(model, inserts, on_duplicate:, update_only: nil, returning: nil, unique_by: nil, record_timestamps: nil)
+    def initialize(model, inserts, on_duplicate:, update_only: nil, returning: nil, unique_by: nil, record_timestamps: nil, where: nil)
       raise ArgumentError, "Empty list of attributes passed" if inserts.blank?
 
       @model, @connection, @inserts = model, model.connection, inserts
-      @on_duplicate, @update_only, @returning, @unique_by = on_duplicate, update_only, returning, unique_by
+      @on_duplicate, @update_only, @returning, @unique_by, @where = on_duplicate, update_only, returning, unique_by, where
       @record_timestamps = record_timestamps.nil? ? model.record_timestamps : record_timestamps
 
       disallow_raw_sql!(on_duplicate)
       disallow_raw_sql!(returning)
+      disallow_raw_sql!(where)
 
       resolve_attribute_aliases
       configure_on_duplicate_update_logic
@@ -157,6 +158,10 @@ module ActiveRecord
           raise ArgumentError, "#{connection.class} does not support :returning"
         end
 
+        if where && !connection.supports_insert_on_duplicate_where?
+          raise ArgumentError, "#{connection.class} does not support :where"
+        end
+
         if skip_duplicates? && !connection.supports_insert_on_duplicate_skip?
           raise ArgumentError, "#{connection.class} does not support skipping duplicates"
         end
@@ -207,7 +212,7 @@ module ActiveRecord
       class Builder # :nodoc:
         attr_reader :model
 
-        delegate :skip_duplicates?, :update_duplicates?, :keys, :keys_including_timestamps, :record_timestamps?, to: :insert_all
+        delegate :skip_duplicates?, :update_duplicates?, :keys, :keys_including_timestamps, :record_timestamps?, :where, to: :insert_all
 
         def initialize(insert_all)
           @insert_all, @model, @connection = insert_all, insert_all.model, insert_all.connection
